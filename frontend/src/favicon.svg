@@ -1,0 +1,10 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circle outline -->
+  <!-- <circle cx="24" cy="24" r="24" fill="none" stroke="#12b886" stroke-width="2" /> -->
+
+  <!-- AF Text -->
+  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central"
+        font-family="sans-serif" font-size="32" font-weight="500" fill="#12b886">
+    AF
+  </text>
+</svg>

@@ -1,0 +1,42 @@
+stages:
+  - skip
+  - info
+  - prebuild
+  - build
+  - deploy
+  - release
+  
+workflow:
+  rules:
+    # Enable merge request pipelines
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Enable branch pipelines
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS == null
+    # Enable tag pipelines
+    - if: $CI_COMMIT_TAG
+
+include:
+  # Deploy to production when a tag is created
+  - local: '.gitlab/workflows/release.yml'
+    rules:
+      - if: $CI_COMMIT_TAG
+  
+  # Build and deploy to development for merge requests targeting main
+  - local: '.gitlab/workflows/mr-to-main.yml'
+    rules:
+      - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"
+  
+  # Print commits when pushing to main branch
+  - local: '.gitlab/workflows/main-push.yml'
+    rules:
+      - if: $CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"
+  
+  # No-op workflow for MRs not targeting main
+  - local: '.gitlab/workflows/no-op.yml'
+    rules:
+      - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME != "main"
+  
+  # No-op workflow for pushes to non-main branches (but not tags)
+  - local: '.gitlab/workflows/no-op.yml'
+    rules:
+      - if: $CI_COMMIT_BRANCH != "main" && $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_TAG == null

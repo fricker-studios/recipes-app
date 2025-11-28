@@ -1,0 +1,11 @@
+stages:
+  - skip
+
+skip-pipeline:
+  stage: skip
+  image: registry.apps.oc01.alexfricker.com/library/gitlab-runner:v.1.0.0
+  script: |
+    echo "This pipeline is intentionally skipped based on branch and event type configuration."
+    echo "Branch: $CI_COMMIT_BRANCH"
+    echo "Pipeline source: $CI_PIPELINE_SOURCE"
+    echo "No further actions required."

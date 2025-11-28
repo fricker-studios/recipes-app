@@ -1,0 +1,29 @@
+stages:
+  - info
+
+variables:
+  GIT_DEPTH: 0  # Ensure we have full git history for commit listing
+
+print-commit-list:
+  stage: info
+  image: registry.apps.oc01.alexfricker.com/library/gitlab-runner:v.1.0.0
+  script: |
+    echo "==============================================="
+    echo "PUSH TO MAIN BRANCH - COMMIT LIST"
+    echo "==============================================="
+    echo "Branch: $CI_COMMIT_BRANCH"
+    echo "Commit SHA: $CI_COMMIT_SHA"
+    echo "Commit Message: $CI_COMMIT_MESSAGE"
+    echo "Author: $GITLAB_USER_NAME <$GITLAB_USER_EMAIL>"
+    echo ""
+    echo "Recent commits in this push:"
+    echo "----------------------------"
+    # Show the last 10 commits on main branch
+    git log --oneline --no-merges -10
+    echo ""
+    echo "Detailed commit information for this push:"
+    echo "------------------------------------------"
+    # Show detailed information for the current commit
+    git log --pretty=format:"Commit: %H%nAuthor: %an <%ae>%nDate: %ad%nMessage: %s%n%b" --date=iso -1
+    echo ""
+    echo "==============================================="
