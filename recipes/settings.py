@@ -1,6 +1,11 @@
 import os
 from pathlib import Path
 
+import sentry_sdk
+from celery.schedules import crontab
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.django import DjangoIntegration
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -117,6 +122,19 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Sentry Config
+SENTRY_DSN = os.getenv("DJANGO_SENTRY_DSN")
+if SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        traces_sample_rate=0.1,
+        environment=os.getenv("DJANGO_SENTRY_ENV", "dev"),
+        release=os.getenv("DJANGO_SENTRY_RELEASE_VERSION", "dev"),
+        integrations=[DjangoIntegration(), CeleryIntegration()],
+        attach_stacktrace=True,
+        send_default_pii=True,
+    )
 
 
 # Celery Configuration

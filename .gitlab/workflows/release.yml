@@ -83,9 +83,9 @@ create-sentry-release:
   image: registry.apps.oc01.alexfricker.com/library/gitlab-runner:v.1.0.0
   script:
     - curl -sL https://sentry.io/get-cli/ | bash
-    - export SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+    - export SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN_UI
     - export SENTRY_ORG=sentry
-    - export SENTRY_PROJECT=recipes-django
+    - export SENTRY_PROJECT=recipes-ui
     - sentry-cli --url https://sentry.alexfricker.com/ releases new "$IMAGE_TAG"
     - sentry-cli --url https://sentry.alexfricker.com/ releases set-commits "$IMAGE_TAG" --auto
     - sentry-cli --url https://sentry.alexfricker.com/ releases finalize "$IMAGE_TAG"
