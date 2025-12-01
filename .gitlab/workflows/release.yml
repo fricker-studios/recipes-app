@@ -89,3 +89,9 @@ create-sentry-release:
     - sentry-cli --url https://sentry.alexfricker.com/ releases new "$IMAGE_TAG"
     - sentry-cli --url https://sentry.alexfricker.com/ releases set-commits "$IMAGE_TAG" --auto
     - sentry-cli --url https://sentry.alexfricker.com/ releases finalize "$IMAGE_TAG"
+    - export SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN_API
+    - export SENTRY_ORG=sentry
+    - export SENTRY_PROJECT=recipes-django
+    - sentry-cli --url https://sentry.alexfricker.com/ releases new "$IMAGE_TAG"
+    - sentry-cli --url https://sentry.alexfricker.com/ releases set-commits "$IMAGE_TAG" --auto
+    - sentry-cli --url https://sentry.alexfricker.com/ releases finalize "$IMAGE_TAG"
