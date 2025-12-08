@@ -14,6 +14,7 @@ class FoodItem(models.Model):
     brand_name = models.CharField(max_length=1000, blank=True, null=True)
     detail_fetch_date = models.DateTimeField(blank=True, null=True)
     detail = models.JSONField(blank=True, null=True)
+    error_count = models.IntegerField(default=0)
 
     def __str__(self):
         return self.description

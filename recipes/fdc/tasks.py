@@ -1,5 +1,6 @@
 from celery import shared_task
 from constance import config
+from django.db.models import F
 from django.utils import timezone
 
 from recipes.fdc import get_api
@@ -32,19 +33,23 @@ def fetch_food_items():
 def fetch_food_detail(fdc_id: int):
     api = get_api()
     logger.info(f"Fetching food detail for FDC ID: {fdc_id}")
-    food_detail = api.get_food_by_fdc_id(fdc_id)
-    FoodItem.objects.update_or_create(
-        fdc_id=fdc_id,
-        defaults=dict(
-            detail_fetch_date=timezone.now(),
-            detail=food_detail.model_dump(),
-        ),
-    )
+    try:
+        food_detail = api.get_food_by_fdc_id(fdc_id)
+        FoodItem.objects.update_or_create(
+            fdc_id=fdc_id,
+            defaults=dict(
+                detail_fetch_date=timezone.now(),
+                detail=food_detail.model_dump(),
+            ),
+        )
+    except Exception as e:
+        logger.error(f"Error fetching food detail for FDC ID {fdc_id}: {e}")
+        FoodItem.objects.filter(fdc_id=fdc_id).update(error_count=F('error_count') + 1)
 
 
 @shared_task
 def fetch_missing_food_details():
-    missing_items = FoodItem.objects.filter(detail__isnull=True)[:1000]
+    missing_items = FoodItem.objects.filter(detail__isnull=True, error_count__lte=5)[:1000]
     for item in missing_items:
         logger.info(f"Fetching missing food detail for FDC ID: {item.fdc_id}")
         fetch_food_detail.delay(item.fdc_id)
