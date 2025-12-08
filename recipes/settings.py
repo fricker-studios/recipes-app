@@ -32,8 +32,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "constance",
+    "django_filters",
     "django_celery_beat",
     "django_celery_results",
+    "recipes.fdc",
+    "recipes.library",
 ]
 
 MIDDLEWARE = [
@@ -142,13 +145,74 @@ CELERY_RESULT_BACKEND = "django-db"
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
-# CELERY_BEAT_SCHEDULE = {
-#     "send_welcome_emails": {
-#         "task": "website.profiles.tasks.send_welcome_emails",
-#         "schedule": crontab(minute="*/5"),  # Every 5 minutes
-#     },
-#     "send_invoice_emails": {
-#         "task": "website.billing.tasks.send_invoice_emails",
-#         "schedule": crontab(minute="0"),  # Every hour
-#     },
-# }
+CELERY_BEAT_SCHEDULE = {
+    "fetch_food_items": {
+        "task": "recipes.fdc.tasks.fetch_food_items",
+        "schedule": crontab(minute="0", hour="0"),  # Every day at 12 AM
+    },
+    "fetch_missing_food_details": {
+        "task": "recipes.fdc.tasks.fetch_missing_food_details",
+        "schedule": crontab(minute="0", hour="1"),  # Every day at 1 AM
+    },
+    "fetch_outdated_food_details": {
+        "task": "recipes.fdc.tasks.fetch_outdated_food_details",
+        "schedule": crontab(minute="0", hour="2"),  # Every day at 2 AM
+    },
+}
+
+
+# Constance
+CONSTANCE_BACKEND = "constance.backends.database.DatabaseBackend"
+CONSTANCE_CONFIG = {
+    "FDC_API_KEY": ("DEMO_KEY", "API key for the FoodData Central API.", str),
+    "FDC_DETAIL_EXPIRY_DAYS": (
+        30,
+        "Number of days before food detail is considered outdated.",
+        int,
+    ),
+    "FDC_ENABLED_DATA_TYPES": (
+        [
+            "Foundation",
+        ],
+        "List of FoodData Central data types to fetch.",
+        list,
+    ),
+}
+
+# Logging Configuration
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "console": {
+            "format": (
+                "[%(asctime)s][%(process)d:%(threadName)s]"
+                "[%(pathname)s:%(funcName)s - line %(lineno)s]"
+                "[%(levelname)s] %(message)s"
+            ),
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "INFO",
+            "class": "logging.StreamHandler",
+            "formatter": "console",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "loggers": {
+        "": {"handlers": ["console"], "level": "INFO"},
+        "celery": {"level": "INFO"},
+        "django": {"level": "INFO"},
+        "django.request": {"handlers": ["console"], "level": "INFO"},
+        "website": {"level": "INFO"},
+    },
+}
+
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "PAGE_SIZE": 25,
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+}

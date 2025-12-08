@@ -46,6 +46,10 @@ runserver: migrate
 	docker compose up -d api
 	node frontend/.yarn/releases/yarn-4.9.2.cjs --cwd frontend run dev
 
+shell: migrate
+	docker compose up -d db
+	docker compose run --rm api python manage.py shell
+
 pretty:
 	docker compose up -d api
 	docker compose run --rm api black .
