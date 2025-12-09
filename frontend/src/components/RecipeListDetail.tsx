@@ -17,6 +17,7 @@ import {
   Center,
   Divider,
   Group,
+  Image,
   Menu,
   Modal,
   ScrollArea,
@@ -45,6 +46,8 @@ export function RecipeListDetail({
   onDelete,
 }: RecipeListDetailProps) {
   const [removingRecipeId, setRemovingRecipeId] = useState<number | null>(null);
+  const [removeModalOpened, setRemoveModalOpened] = useState(false);
+  const [recipeToRemove, setRecipeToRemove] = useState<{ id: number; name: string } | null>(null);
   const navigate = useNavigate();
 
   if (!recipeList) return null;
@@ -54,14 +57,19 @@ export function RecipeListDetail({
     onClose();
   };
 
-  const handleRemoveRecipe = async (recipeId: number, recipeName: string) => {
-    if (!window.confirm(`Are you sure you want to remove "${recipeName}" from this collection?`)) {
-      return;
-    }
+  const handleRemoveRecipe = (recipeId: number, recipeName: string) => {
+    setRecipeToRemove({ id: recipeId, name: recipeName });
+    setRemoveModalOpened(true);
+  };
 
-    setRemovingRecipeId(recipeId);
+  const confirmRemoveRecipe = async () => {
+    if (!recipeToRemove) return;
+
+    setRemovingRecipeId(recipeToRemove.id);
     try {
-      await onRemoveRecipe(recipeId);
+      await onRemoveRecipe(recipeToRemove.id);
+      setRemoveModalOpened(false);
+      setRecipeToRemove(null);
     } finally {
       setRemovingRecipeId(null);
     }
@@ -149,7 +157,19 @@ export function RecipeListDetail({
                     e.currentTarget.style.transform = 'scale(1)';
                   }}
                 >
-                  <Group justify="space-between" wrap="nowrap">
+                  <Group justify="space-between" wrap="nowrap" align="flex-start">
+                    {recipe.image && (
+                      <Image
+                        src={recipe.image}
+                        alt={recipe.name}
+                        w={80}
+                        h={80}
+                        fit="cover"
+                        radius="md"
+                        onClick={() => handleRecipeClick(recipe.id)}
+                        style={{ cursor: 'pointer', flexShrink: 0 }}
+                      />
+                    )}
                     <Stack
                       gap="xs"
                       style={{ flex: 1, minWidth: 0 }}
@@ -213,6 +233,44 @@ export function RecipeListDetail({
           )}
         </ScrollArea>
       </Stack>
+
+      <Modal
+        opened={removeModalOpened}
+        onClose={() => {
+          setRemoveModalOpened(false);
+          setRecipeToRemove(null);
+        }}
+        title="Remove Recipe"
+        centered
+        zIndex={400}
+      >
+        <Stack gap="md">
+          <Text>
+            Are you sure you want to remove <strong>{recipeToRemove?.name}</strong> from this
+            collection?
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setRemoveModalOpened(false);
+                setRecipeToRemove(null);
+              }}
+              disabled={removingRecipeId !== null}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              leftSection={<IconTrash size={18} />}
+              onClick={confirmRemoveRecipe}
+              loading={removingRecipeId !== null}
+            >
+              Remove
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Modal>
   );
 }

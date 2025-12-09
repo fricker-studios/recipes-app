@@ -74,6 +74,39 @@ class RecipeViewSet(viewsets.ModelViewSet):
             serializer.data, status=status.HTTP_201_CREATED, headers=headers
         )
 
+    def update(self, request, *args, **kwargs):
+        # Parse JSON strings from FormData (same as create)
+        data = request.data.copy()
+
+        if "ingredients" in data and isinstance(data["ingredients"], str):
+            try:
+                data["ingredients"] = json.loads(data["ingredients"])
+            except json.JSONDecodeError as e:
+                return Response(
+                    {"ingredients": f"Invalid JSON format: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if "steps" in data and isinstance(data["steps"], str):
+            try:
+                data["steps"] = json.loads(data["steps"])
+            except json.JSONDecodeError as e:
+                return Response(
+                    {"steps": f"Invalid JSON format: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        if getattr(instance, "_prefetched_objects_cache", None):
+            instance._prefetched_objects_cache = {}
+
+        return Response(serializer.data)
+
     def get_serializer_class(self):
         if self.action in ["list"]:
             return RecipeListSerializer

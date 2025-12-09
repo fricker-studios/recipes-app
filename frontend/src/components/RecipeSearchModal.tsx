@@ -7,6 +7,7 @@ import {
   Card,
   Center,
   Group,
+  Image,
   Loader,
   Modal,
   ScrollArea,
@@ -115,7 +116,18 @@ export function RecipeSearchModal({
             <Stack gap="sm">
               {filteredRecipes.map((recipe) => (
                 <Card key={recipe.id} shadow="xs" padding="md" radius="md" withBorder>
-                  <Group justify="space-between" wrap="nowrap">
+                  <Group justify="space-between" wrap="nowrap" align="flex-start">
+                    {recipe.image && (
+                      <Image
+                        src={recipe.image}
+                        alt={recipe.name}
+                        w={80}
+                        h={80}
+                        fit="cover"
+                        radius="md"
+                        style={{ flexShrink: 0 }}
+                      />
+                    )}
                     <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
                       <Group gap="xs">
                         <Text fw={500} lineClamp={1}>

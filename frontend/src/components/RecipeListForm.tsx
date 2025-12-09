@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Button, Group, Modal, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import type { CreateRecipeCollectionRequest, RecipeCollection } from '../api/types';
@@ -19,13 +20,25 @@ export function RecipeListForm({
 }: RecipeListFormProps) {
   const form = useForm<CreateRecipeCollectionRequest>({
     initialValues: {
-      name: initialData?.name || '',
-      description: initialData?.description || '',
+      name: '',
+      description: '',
     },
     validate: {
       name: (value) => (!value || value.trim().length === 0 ? 'Name is required' : null),
     },
   });
+
+  // Update form values when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      form.setValues({
+        name: initialData.name,
+        description: initialData.description || '',
+      });
+    } else {
+      form.reset();
+    }
+  }, [initialData]);
 
   const handleSubmit = async (values: CreateRecipeCollectionRequest) => {
     try {

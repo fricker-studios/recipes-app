@@ -303,12 +303,20 @@ export class Api {
     return response.json();
   }
 
-  static async updateRecipe(id: number, data: CreateRecipeRequest): Promise<RecipeDetail> {
+  static async updateRecipe(
+    id: number,
+    data: CreateRecipeRequest | FormData
+  ): Promise<RecipeDetail> {
+    const isFormData = data instanceof FormData;
+    const headers = isFormData
+      ? { 'X-CSRFToken': await this.getToken() }
+      : await Api.getProtectedHeaders();
+
     const response = await fetch(Api.buildUrl(Api.endpoints.recipe(id)), {
       method: 'PUT',
-      headers: await Api.getProtectedHeaders(),
+      headers,
       credentials: 'include',
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     });
 
     if (!response.ok) {

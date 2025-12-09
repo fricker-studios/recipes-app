@@ -4,11 +4,13 @@ import {
   IconArrowLeft,
   IconDeviceFloppy,
   IconEdit,
+  IconPlus,
   IconTrash,
   IconX,
 } from '@tabler/icons-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  ActionIcon,
   Alert,
   Badge,
   Box,
@@ -21,6 +23,7 @@ import {
   Loader,
   Modal,
   NumberInput,
+  Select,
   Stack,
   Table,
   Text,
@@ -29,8 +32,26 @@ import {
   Title,
 } from '@mantine/core';
 import { Api } from '../api/Api';
-import type { Ingredient } from '../api/types';
+import type { Ingredient, IngredientNutrient } from '../api/types';
 import { useIngredient } from '../hooks/useIngredient';
+
+// Nutrient options matching the Django NutrientNames choices
+const NUTRIENT_OPTIONS = [
+  { value: 'calcium', label: 'Calcium' },
+  { value: 'carbohydrates', label: 'Carbohydrates' },
+  { value: 'cholesterol', label: 'Cholesterol' },
+  { value: 'energy', label: 'Energy' },
+  { value: 'fiber', label: 'Fiber, total dietary' },
+  { value: 'fat', label: 'Total lipid (fat)' },
+  { value: 'iron', label: 'Iron, Fe' },
+  { value: 'monounsaturated_fat', label: 'Fatty acids, total monounsaturated' },
+  { value: 'polyunsaturated_fat', label: 'Fatty acids, total polyunsaturated' },
+  { value: 'protein', label: 'Protein' },
+  { value: 'saturated_fat', label: 'Fatty acids, total saturated' },
+  { value: 'sodium', label: 'Sodium, Na' },
+  { value: 'sugars', label: 'Sugars, Total' },
+  { value: 'vitamin_c', label: 'Vitamin C, total ascorbic acid' },
+];
 
 export function IngredientDetail() {
   const { id } = useParams<{ id: string }>();
@@ -40,9 +61,16 @@ export function IngredientDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editData, setEditData] = useState<Partial<Ingredient>>({});
+  const [editNutrients, setEditNutrients] = useState<Partial<IngredientNutrient>[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Helper function to get friendly nutrient name
+  const getNutrientLabel = (value: string) => {
+    const option = NUTRIENT_OPTIONS.find((opt) => opt.value === value);
+    return option ? option.label : value;
+  };
 
   useEffect(() => {
     if (data) {
@@ -52,6 +80,7 @@ export function IngredientDetail() {
         description: data.description,
         grams_per_cup: data.grams_per_cup,
       });
+      setEditNutrients(data.nutrients || []);
     }
   }, [data]);
 
@@ -70,6 +99,7 @@ export function IngredientDetail() {
         description: data.description,
         grams_per_cup: data.grams_per_cup,
       });
+      setEditNutrients(data.nutrients || []);
     }
   };
 
@@ -80,7 +110,10 @@ export function IngredientDetail() {
     setSaveError(null);
 
     try {
-      await Api.updateIngredient(parseInt(id, 10), editData);
+      await Api.updateIngredient(parseInt(id, 10), {
+        ...editData,
+        nutrients: editNutrients as IngredientNutrient[],
+      });
       setIsEditing(false);
       // Refetch the data
       window.location.reload();
@@ -89,6 +122,20 @@ export function IngredientDetail() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleAddNutrient = () => {
+    setEditNutrients([...editNutrients, { nutrient_name: '', amount: 0, grams: 100 }]);
+  };
+
+  const handleUpdateNutrient = (index: number, field: keyof IngredientNutrient, value: any) => {
+    const updated = [...editNutrients];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditNutrients(updated);
+  };
+
+  const handleDeleteNutrient = (index: number) => {
+    setEditNutrients(editNutrients.filter((_, i) => i !== index));
   };
 
   const handleDelete = async () => {
@@ -318,7 +365,7 @@ export function IngredientDetail() {
             </Card>
           </Grid.Col>
 
-          {data.nutrients && data.nutrients.length > 0 && (
+          {!isEditing && data.nutrients && data.nutrients.length > 0 && (
             <Grid.Col span={{ base: 12, md: 6 }}>
               <Card shadow="sm" padding="lg" radius="md" withBorder>
                 <Stack gap="md">
@@ -338,13 +385,102 @@ export function IngredientDetail() {
                     <Table.Tbody>
                       {data.nutrients.map((nutrient, index) => (
                         <Table.Tr key={nutrient.id || index}>
-                          <Table.Td>{nutrient.nutrient_name}</Table.Td>
+                          <Table.Td>{getNutrientLabel(nutrient.nutrient_name)}</Table.Td>
                           <Table.Td>{nutrient.amount}</Table.Td>
                           <Table.Td>{nutrient.grams}g</Table.Td>
                         </Table.Tr>
                       ))}
                     </Table.Tbody>
                   </Table>
+                </Stack>
+              </Card>
+            </Grid.Col>
+          )}
+
+          {isEditing && (
+            <Grid.Col span={{ base: 12, md: 6 }}>
+              <Card shadow="sm" padding="lg" radius="md" withBorder>
+                <Stack gap="md">
+                  <Group justify="space-between">
+                    <Title order={3}>Nutritional Information</Title>
+                    <Button
+                      size="sm"
+                      leftSection={<IconPlus size={16} />}
+                      onClick={handleAddNutrient}
+                    >
+                      Add Nutrient
+                    </Button>
+                  </Group>
+
+                  {editNutrients.length === 0 ? (
+                    <Text c="dimmed" size="sm">
+                      No nutrients added yet. Click "Add Nutrient" to add one.
+                    </Text>
+                  ) : (
+                    <Table>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>Nutrient Name</Table.Th>
+                          <Table.Th>Amount</Table.Th>
+                          <Table.Th>Per (g)</Table.Th>
+                          <Table.Th style={{ width: 60 }}></Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {editNutrients.map((nutrient, index) => (
+                          <Table.Tr key={index}>
+                            <Table.Td>
+                              <Select
+                                value={nutrient.nutrient_name || ''}
+                                onChange={(value) =>
+                                  handleUpdateNutrient(index, 'nutrient_name', value || '')
+                                }
+                                data={NUTRIENT_OPTIONS}
+                                placeholder="Select nutrient"
+                                size="sm"
+                                searchable
+                                clearable
+                              />
+                            </Table.Td>
+                            <Table.Td>
+                              <NumberInput
+                                value={nutrient.amount || 0}
+                                onChange={(value) =>
+                                  handleUpdateNutrient(index, 'amount', value as number)
+                                }
+                                min={0}
+                                step={0.1}
+                                decimalScale={2}
+                                placeholder="0"
+                                size="sm"
+                              />
+                            </Table.Td>
+                            <Table.Td>
+                              <NumberInput
+                                value={nutrient.grams || 100}
+                                onChange={(value) =>
+                                  handleUpdateNutrient(index, 'grams', value as number)
+                                }
+                                min={0}
+                                step={1}
+                                placeholder="100"
+                                size="sm"
+                              />
+                            </Table.Td>
+                            <Table.Td>
+                              <ActionIcon
+                                color="red"
+                                variant="subtle"
+                                onClick={() => handleDeleteNutrient(index)}
+                              >
+                                <IconTrash size={18} />
+                              </ActionIcon>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  )}
                 </Stack>
               </Card>
             </Grid.Col>
