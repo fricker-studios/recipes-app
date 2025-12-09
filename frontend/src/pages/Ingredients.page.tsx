@@ -19,6 +19,7 @@ import {
   Title,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
+import { CreateIngredientModal } from '../components/CreateIngredientModal';
 import { useIngredients } from '../hooks/useIngredients';
 
 export function Ingredients() {
@@ -26,6 +27,7 @@ export function Ingredients() {
   const [search, setSearch] = useState('');
   const [debouncedSearch] = useDebouncedValue(search, 300);
   const [pageSize] = useState(12);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const { data, count, loading, error, goToPage, updateParams, params } = useIngredients({
     limit: pageSize,
@@ -38,6 +40,12 @@ export function Ingredients() {
     });
   }, [debouncedSearch, updateParams]);
 
+  const handleIngredientCreated = () => {
+    // Refresh the ingredient list by updating params
+    updateParams({ offset: params.offset || 0 });
+    setCreateModalOpen(false);
+  };
+
   const currentPage = Math.floor((params.offset || 0) / pageSize) + 1;
   const totalPages = Math.ceil(count / pageSize);
 
@@ -46,7 +54,9 @@ export function Ingredients() {
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <Title order={1}>Ingredients</Title>
-          <Button leftSection={<IconPlus size={18} />}>Add Ingredient</Button>
+          <Button leftSection={<IconPlus size={18} />} onClick={() => setCreateModalOpen(true)}>
+            Add Ingredient
+          </Button>
         </Group>
 
         <Divider />
@@ -158,6 +168,13 @@ export function Ingredients() {
           </Group>
         )}
       </Stack>
+
+      <CreateIngredientModal
+        opened={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        foodItemId={null}
+        onSuccess={handleIngredientCreated}
+      />
     </Box>
   );
 }

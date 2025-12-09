@@ -105,12 +105,23 @@ export class Api {
     return response.json();
   }
 
-  static async updateFdcSettings(enabledDataTypes: string[]): Promise<FdcSettings> {
+  static async updateFdcSettings(
+    enabledDataTypes?: string[],
+    apiKey?: string
+  ): Promise<FdcSettings> {
+    const body: any = {};
+    if (enabledDataTypes !== undefined) {
+      body.enabled_data_types = enabledDataTypes;
+    }
+    if (apiKey !== undefined) {
+      body.api_key = apiKey;
+    }
+
     const response = await fetch(Api.buildUrl(Api.endpoints.fdcSettings), {
       method: 'POST',
       headers: await Api.getProtectedHeaders(),
       credentials: 'include',
-      body: JSON.stringify({ enabled_data_types: enabledDataTypes }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
@@ -271,12 +282,17 @@ export class Api {
     return response.json();
   }
 
-  static async createRecipe(data: CreateRecipeRequest): Promise<RecipeDetail> {
+  static async createRecipe(data: CreateRecipeRequest | FormData): Promise<RecipeDetail> {
+    const isFormData = data instanceof FormData;
+    const headers = isFormData
+      ? { 'X-CSRFToken': await this.getToken() }
+      : await Api.getProtectedHeaders();
+
     const response = await fetch(Api.buildUrl(Api.endpoints.recipes), {
       method: 'POST',
-      headers: await Api.getProtectedHeaders(),
+      headers,
       credentials: 'include',
-      body: JSON.stringify(data),
+      body: isFormData ? data : JSON.stringify(data),
     });
 
     if (!response.ok) {
@@ -387,5 +403,36 @@ export class Api {
     }
 
     return response.json();
+  }
+
+  static async updateRecipeList(
+    id: number,
+    data: CreateRecipeCollectionRequest
+  ): Promise<RecipeCollection> {
+    const response = await fetch(Api.buildUrl(Api.endpoints.recipeList(id)), {
+      method: 'PATCH',
+      headers: await Api.getProtectedHeaders(),
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update recipe list');
+    }
+
+    return response.json();
+  }
+
+  static async deleteRecipeList(id: number): Promise<void> {
+    const response = await fetch(Api.buildUrl(Api.endpoints.recipeList(id)), {
+      method: 'DELETE',
+      headers: await Api.getProtectedHeaders(),
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete recipe list');
+    }
   }
 }

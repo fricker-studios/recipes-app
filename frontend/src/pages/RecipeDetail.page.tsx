@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   IconAlertCircle,
   IconArrowLeft,
@@ -25,10 +26,12 @@ import {
   List,
   Loader,
   Menu,
+  Modal,
   Stack,
   Text,
   Title,
 } from '@mantine/core';
+import { Api } from '../api/Api';
 import type { DifficultyLevel } from '../api/types';
 import { useRecipe } from '../hooks/useRecipe';
 
@@ -42,6 +45,8 @@ export function RecipeDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data, loading, error } = useRecipe(id ? parseInt(id, 10) : null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (loading) {
     return (
@@ -69,6 +74,22 @@ export function RecipeDetail() {
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+
+    setIsDeleting(true);
+
+    try {
+      await Api.deleteRecipe(parseInt(id, 10));
+      navigate('/recipes');
+    } catch (err) {
+      console.error('Failed to delete recipe:', err);
+      setDeleteModalOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Box p="xl">
       <Stack gap="lg">
@@ -88,7 +109,11 @@ export function RecipeDetail() {
             </Menu.Target>
             <Menu.Dropdown>
               <Menu.Item leftSection={<IconEdit size={14} />}>Edit Recipe</Menu.Item>
-              <Menu.Item leftSection={<IconTrash size={14} />} color="red">
+              <Menu.Item
+                leftSection={<IconTrash size={14} />}
+                color="red"
+                onClick={() => setDeleteModalOpen(true)}
+              >
                 Delete Recipe
               </Menu.Item>
             </Menu.Dropdown>
@@ -97,8 +122,8 @@ export function RecipeDetail() {
 
         <Grid gutter="xl">
           <Grid.Col span={{ base: 12, md: 4 }}>
-            {data.image_url ? (
-              <Image src={data.image_url} alt={data.name} radius="md" fit="cover" h={300} />
+            {data.image ? (
+              <Image src={data.image} alt={data.name} radius="md" fit="cover" h={300} />
             ) : (
               <Center
                 h={300}
@@ -258,6 +283,37 @@ export function RecipeDetail() {
           </Grid.Col>
         </Grid>
       </Stack>
+
+      <Modal
+        opened={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Recipe"
+        centered
+      >
+        <Stack gap="md">
+          <Text>
+            Are you sure you want to delete <strong>{data.name}</strong>? This action cannot be
+            undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              leftSection={<IconTrash size={18} />}
+              onClick={handleDelete}
+              loading={isDeleting}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

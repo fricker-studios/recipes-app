@@ -105,7 +105,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
             "cook_time_minutes",
             "total_time_minutes",
             "servings",
-            "image_url",
+            "image",
             "tags",
             "ingredient_count",
             "created_at",
@@ -120,8 +120,8 @@ class RecipeListSerializer(serializers.ModelSerializer):
 class RecipeDetailSerializer(serializers.ModelSerializer):
     """Detail view serializer with full nested data"""
 
-    ingredients = RecipeIngredientSerializer(many=True, required=False)
-    steps = RecipeStepSerializer(many=True, required=False)
+    ingredients = RecipeIngredientSerializer(many=True, required=False, read_only=True)
+    steps = RecipeStepSerializer(many=True, required=False, read_only=True)
     total_time_minutes = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -135,7 +135,7 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
             "cook_time_minutes",
             "total_time_minutes",
             "servings",
-            "image_url",
+            "image",
             "source_url",
             "tags",
             "ingredients",
@@ -145,6 +145,17 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
+    def validate(self, data):
+        """Preserve ingredients and steps data from initial_data for create/update"""
+        # Store the nested data from initial_data since they're marked read_only
+        # This allows us to receive them in the API but not validate them as nested serializers
+        initial_data = getattr(self, "initial_data", {})
+        if "ingredients" in initial_data:
+            data["ingredients"] = initial_data["ingredients"]
+        if "steps" in initial_data:
+            data["steps"] = initial_data["steps"]
+        return data
+
     def create(self, validated_data):
         ingredients_data = validated_data.pop("ingredients", [])
         steps_data = validated_data.pop("steps", [])
@@ -152,6 +163,21 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
         recipe = Recipe.objects.create(**validated_data)
 
         for ingredient_data in ingredients_data:
+            # Handle ingredient - get the Ingredient instance
+            ingredient_value = ingredient_data.pop("ingredient")
+            if isinstance(ingredient_value, str):
+                # Get or create ingredient by name
+                ingredient, _ = Ingredient.objects.get_or_create(
+                    name=ingredient_value.strip()
+                )
+            elif isinstance(ingredient_value, int):
+                # It's an ID, fetch the instance
+                ingredient = Ingredient.objects.get(id=ingredient_value)
+            else:
+                # It's already an Ingredient instance
+                ingredient = ingredient_value
+
+            ingredient_data["ingredient"] = ingredient
             RecipeIngredient.objects.create(recipe=recipe, **ingredient_data)
 
         for step_data in steps_data:
@@ -204,3 +230,19 @@ class RecipeListCollectionSerializer(serializers.ModelSerializer):
 
     def get_recipe_count(self, obj):
         return obj.recipes.count()
+
+    def update(self, instance, validated_data):
+        # Get the recipes data from initial_data if provided
+        initial_data = getattr(self, "initial_data", {})
+        recipes_data = initial_data.get("recipes", None)
+
+        # Update basic fields
+        instance.name = validated_data.get("name", instance.name)
+        instance.description = validated_data.get("description", instance.description)
+        instance.save()
+
+        # Update recipes if provided
+        if recipes_data is not None:
+            instance.recipes.set(recipes_data)
+
+        return instance

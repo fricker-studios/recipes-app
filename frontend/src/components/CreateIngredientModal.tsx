@@ -137,8 +137,6 @@ export function CreateIngredientModal({
   };
 
   const handleSubmit = async () => {
-    if (!foodItemId) return;
-
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -149,7 +147,7 @@ export function CreateIngredientModal({
         plural_name: pluralName || undefined,
         description: description || undefined,
         grams_per_cup: gramsPerCup ? Number(gramsPerCup) : null,
-        fdc_food_item: foodItemId,
+        fdc_food_item: foodItemId || undefined,
         nutrients: Object.entries(nutrients)
           .filter(([_, value]) => value && value.trim() !== '')
           .map(([key, value]) => ({
