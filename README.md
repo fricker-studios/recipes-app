@@ -1,93 +1,206 @@
 # Recipes App
 
+[![latest release](https://gitlab.alexfricker.com/external/recipes/-/badges/release.svg)](https://gitlab.alexfricker.com/external/recipes/-/releases)
+[![pipeline status](https://gitlab.alexfricker.com/external/recipes/badges/main/pipeline.svg)](https://gitlab.alexfricker.com/external/recipes/-/pipelines)
 
+A full-stack recipe management application built with Django and React, featuring a modern UI powered by Mantine and comprehensive recipe library management.
 
-## Getting started
+## Features
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- 📚 Recipe library management
+- 🔍 Search and filter recipes
+- 📝 Create and edit recipes with detailed information
+- 🎨 Modern, responsive UI built with Mantine
+- 🔐 User authentication and authorization
+- 📱 Mobile-friendly design
+- ⚡ Fast API built with Django REST Framework
+- 🔄 Background task processing with Celery
+- 📊 Integration with USDA FoodData Central
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Tech Stack
 
-## Add your files
+### Backend
+- **Python 3.11+**
+- **Django 5.2** - Web framework
+- **Django REST Framework** - API
+- **PostgreSQL 17** - Database
+- **Redis 7** - Cache and message broker
+- **Celery** - Async task processing
+- **Gunicorn** - WSGI server
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+### Frontend
+- **React 18** - UI framework
+- **TypeScript** - Type-safe JavaScript
+- **Mantine 8** - UI component library
+- **Vite** - Build tool
+- **TanStack Query** - Data fetching
+- **React Router 7** - Navigation
+
+## Prerequisites
+
+- Python 3.11 or higher
+- Node.js 18 or higher
+- Docker and Docker Compose (for containerized setup)
+- PostgreSQL 17 (if running without Docker)
+- Redis 7 (if running without Docker)
+
+## Getting Started
+
+### Development Setup with Docker (Recommended)
+
+1. **Clone the repository**
+   ```bash
+   git clone https://gitlab.alexfricker.com/external/recipes-app.git
+   cd recipes-app
+   ```
+
+2. **Set up environment**
+   ```bash
+   make env
+   ```
+   This creates a `.env` file from `.env.example`. Edit `.env` to configure your environment variables.
+
+3. **Build the application**
+   ```bash
+   make build
+   ```
+
+4. **Run database migrations**
+   ```bash
+   make migrate
+   ```
+
+5. **Start the development server**
+   ```bash
+   make runserver
+   ```
+
+   This will:
+   - Start the PostgreSQL database
+   - Start the Django API on `http://localhost:8000`
+   - Start the Vite dev server on `http://localhost:5173`
+
+### Local Development Setup (Without Docker)
+
+1. **Set up Python environment**
+   ```bash
+   make python-env
+   source .venv/bin/activate
+   ```
+
+2. **Set up Node environment**
+   ```bash
+   make node-env
+   ```
+
+3. **Configure environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your local database and Redis settings
+   ```
+
+4. **Run migrations**
+   ```bash
+   python manage.py migrate
+   ```
+
+5. **Start services**
+   ```bash
+   # Terminal 1: Start Django
+   python manage.py runserver
+
+   # Terminal 2: Start Vite dev server
+   cd frontend
+   yarn dev
+
+   # Terminal 3: Start Celery worker
+   celery -A recipes worker -l info
+
+   # Terminal 4: Start Celery beat
+   celery -A recipes beat -l info
+   ```
+
+## Development Commands
+
+### Makefile Commands
+
+- `make env` - Set up Python and Node environments
+- `make python-env` - Set up Python virtual environment only
+- `make node-env` - Install Node dependencies only
+- `make build` - Build Docker images
+- `make migrate` - Run database migrations
+- `make migrations` - Generate new migrations
+- `make runserver` - Start development server
+- `make shell` - Open a shell in the API container
+- `make clean` - Remove build artifacts and dependencies
+
+### Frontend Commands
+
+```bash
+cd frontend
+
+# Start dev server
+yarn dev
+
+# Run tests
+yarn test
+
+# Type checking
+yarn typecheck
+
+# Linting
+yarn lint
+
+# Format code
+yarn prettier:write
+
+# Build for production
+yarn build
+```
+
+### Backend Commands
+
+```bash
+# Create superuser
+python manage.py createsuperuser
+
+# Run tests
+python manage.py test
+
+# Open Django shell
+python manage.py shell
+
+# Collect static files
+python manage.py collectstatic
+```
+
+## Project Structure
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.alexfricker.com/external/recipes-app.git
-git branch -M main
-git push -uf origin main
+recipes/
+├── frontend/              # React frontend
+│   ├── src/              # Source files
+│   └── package.json      # Node dependencies
+├── recipes/              # Django project
+│   ├── fdc/             # FoodData Central integration
+│   ├── library/         # Recipe library app
+│   ├── settings.py      # Django settings
+│   └── urls.py          # URL routing
+├── docker-compose.yaml   # Docker services
+├── Dockerfile           # API container
+├── Dockerfile.nginx     # Frontend container
+├── Makefile            # Development commands
+└── pyproject.toml      # Python dependencies
 ```
 
-## Integrate with your tools
+## Deployment
 
-- [ ] [Set up project integrations](https://gitlab.alexfricker.com/external/recipes-app/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+The application is designed to be deployed on Kubernetes using the GitOps manifests in the `gitops-demo` repository.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+See [LICENSE](LICENSE) file for details.
+
+## Author
+
+Alex Fricker - alex@alexfricker.com
