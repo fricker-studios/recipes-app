@@ -14,3 +14,4 @@ RUN mkdir -p /var/cache/nginx
 RUN chgrp -R 0 /var/lib/nginx && chmod -R go+rw /var/lib/nginx
 RUN chgrp -R 0 /var/cache/nginx && chmod -R go+rw /var/cache/nginx
 RUN chgrp -R 0 /var/run && chmod -R go+rw /var/run
+RUN mkdir -p /app/mediafiles && chgrp -R 0 /app/mediafiles && chmod -R go+rw /app/mediafiles

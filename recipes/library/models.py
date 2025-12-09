@@ -66,7 +66,7 @@ class Recipe(models.Model):
     prep_time_minutes = models.IntegerField(null=True, blank=True)
     cook_time_minutes = models.IntegerField(null=True, blank=True)
     servings = models.IntegerField(default=4)
-    image_url = models.URLField(max_length=500, blank=True)
+    image = models.FileField(upload_to="recipes/images/", blank=True, null=True)
     source_url = models.URLField(max_length=500, blank=True)
     tags = models.CharField(
         max_length=500, blank=True, help_text="Comma-separated tags"

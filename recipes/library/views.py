@@ -1,4 +1,6 @@
-from rest_framework import filters, viewsets
+import json
+from rest_framework import filters, viewsets, status
+from rest_framework.response import Response
 from django.db.models import Q
 
 from recipes.library.models import Ingredient, Recipe, RecipeList
@@ -11,7 +13,7 @@ from recipes.library.serializers import (
 
 
 class IngredientViewSet(viewsets.ModelViewSet):
-    queryset = Ingredient.objects.all()
+    queryset = Ingredient.objects.all().order_by("name")
     serializer_class = IngredientSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "description"]
@@ -20,11 +22,57 @@ class IngredientViewSet(viewsets.ModelViewSet):
 
 
 class RecipeViewSet(viewsets.ModelViewSet):
-    queryset = Recipe.objects.prefetch_related("ingredients", "steps").all()
+    queryset = (
+        Recipe.objects.prefetch_related("ingredients", "steps").all().order_by("name")
+    )
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "description", "tags"]
     ordering_fields = ["name", "created_at", "prep_time_minutes", "cook_time_minutes"]
     ordering = ["-created_at"]
+
+    def create(self, request, *args, **kwargs):
+        # Parse JSON strings from FormData
+        data = request.data.copy()
+
+        if "ingredients" in data and isinstance(data["ingredients"], str):
+            try:
+                data["ingredients"] = json.loads(data["ingredients"])
+            except json.JSONDecodeError as e:
+                return Response(
+                    {"ingredients": f"Invalid JSON format: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if "steps" in data and isinstance(data["steps"], str):
+            try:
+                data["steps"] = json.loads(data["steps"])
+            except json.JSONDecodeError as e:
+                return Response(
+                    {"steps": f"Invalid JSON format: {str(e)}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        # Debug logging
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.info(
+            f"Recipe create data: ingredients={data.get('ingredients')}, steps={data.get('steps')}"
+        )
+
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+
+        # Debug what validated data looks like
+        logger.info(
+            f"Validated data: ingredients={serializer.validated_data.get('ingredients')}, steps={serializer.validated_data.get('steps')}"
+        )
+
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(
+            serializer.data, status=status.HTTP_201_CREATED, headers=headers
+        )
 
     def get_serializer_class(self):
         if self.action in ["list"]:
@@ -64,7 +112,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
 
 class RecipeListViewSet(viewsets.ModelViewSet):
-    queryset = RecipeList.objects.prefetch_related("recipes").all()
+    queryset = RecipeList.objects.prefetch_related("recipes").all().order_by("name")
     serializer_class = RecipeListCollectionSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name", "description"]

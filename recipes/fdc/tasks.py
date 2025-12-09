@@ -44,12 +44,14 @@ def fetch_food_detail(fdc_id: int):
         )
     except Exception as e:
         logger.error(f"Error fetching food detail for FDC ID {fdc_id}: {e}")
-        FoodItem.objects.filter(fdc_id=fdc_id).update(error_count=F('error_count') + 1)
+        FoodItem.objects.filter(fdc_id=fdc_id).update(error_count=F("error_count") + 1)
 
 
 @shared_task
 def fetch_missing_food_details():
-    missing_items = FoodItem.objects.filter(detail__isnull=True, error_count__lte=5)[:1000]
+    missing_items = FoodItem.objects.filter(detail__isnull=True, error_count__lte=5)[
+        :1000
+    ]
     for item in missing_items:
         logger.info(f"Fetching missing food detail for FDC ID: {item.fdc_id}")
         fetch_food_detail.delay(item.fdc_id)

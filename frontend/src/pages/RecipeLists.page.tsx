@@ -1,5 +1,14 @@
-import { IconAlertCircle, IconList, IconPlus } from '@tabler/icons-react';
+import { useState } from 'react';
 import {
+  IconAlertCircle,
+  IconEdit,
+  IconEye,
+  IconList,
+  IconPlus,
+  IconTrash,
+} from '@tabler/icons-react';
+import {
+  ActionIcon,
   Alert,
   Badge,
   Box,
@@ -10,21 +19,192 @@ import {
   Grid,
   Group,
   Loader,
+  Menu,
   Stack,
   Text,
   Title,
 } from '@mantine/core';
+import { notifications } from '@mantine/notifications';
+import { Api } from '../api/Api';
+import type { CreateRecipeCollectionRequest, RecipeCollection } from '../api/types';
+import { RecipeListDetail } from '../components/RecipeListDetail';
+import { RecipeListForm } from '../components/RecipeListForm';
+import { RecipeSearchModal } from '../components/RecipeSearchModal';
 import { useRecipeLists } from '../hooks/useRecipeLists';
 
 export function RecipeLists() {
-  const { data, loading, error } = useRecipeLists();
+  const { data, loading, error, refetch } = useRecipeLists();
+  const [formOpened, setFormOpened] = useState(false);
+  const [detailOpened, setDetailOpened] = useState(false);
+  const [searchOpened, setSearchOpened] = useState(false);
+  const [editingList, setEditingList] = useState<RecipeCollection | null>(null);
+  const [selectedList, setSelectedList] = useState<RecipeCollection | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateOrUpdate = async (formData: CreateRecipeCollectionRequest) => {
+    setIsSubmitting(true);
+    try {
+      if (editingList) {
+        await Api.updateRecipeList(editingList.id, formData);
+        notifications.show({
+          title: 'Success',
+          message: 'Collection updated successfully',
+          color: 'green',
+        });
+      } else {
+        await Api.createRecipeList(formData);
+        notifications.show({
+          title: 'Success',
+          message: 'Collection created successfully',
+          color: 'green',
+        });
+      }
+      await refetch();
+      setFormOpened(false);
+      setEditingList(null);
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to save collection',
+        color: 'red',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (list: RecipeCollection) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${list.name}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await Api.deleteRecipeList(list.id);
+      notifications.show({
+        title: 'Success',
+        message: 'Collection deleted successfully',
+        color: 'green',
+      });
+      await refetch();
+      if (selectedList?.id === list.id) {
+        setDetailOpened(false);
+        setSelectedList(null);
+      }
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to delete collection',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleViewDetails = async (listId: number) => {
+    try {
+      const list = await Api.getRecipeList(listId);
+      setSelectedList(list);
+      setDetailOpened(true);
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to load collection details',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleEdit = (list: RecipeCollection) => {
+    setEditingList(list);
+    setFormOpened(true);
+  };
+
+  const handleEditFromDetail = () => {
+    if (selectedList) {
+      setDetailOpened(false);
+      setEditingList(selectedList);
+      setFormOpened(true);
+    }
+  };
+
+  const handleDeleteFromDetail = () => {
+    if (selectedList) {
+      setDetailOpened(false);
+      handleDelete(selectedList);
+    }
+  };
+
+  const handleAddRecipeToList = async (recipeId: number) => {
+    if (!selectedList) return;
+
+    try {
+      await Api.addRecipeToList(selectedList.id, recipeId);
+      notifications.show({
+        title: 'Success',
+        message: 'Recipe added to collection',
+        color: 'green',
+      });
+      const updatedList = await Api.getRecipeList(selectedList.id);
+      setSelectedList(updatedList);
+      await refetch();
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to add recipe',
+        color: 'red',
+      });
+      throw err;
+    }
+  };
+
+  const handleRemoveRecipeFromList = async (recipeId: number) => {
+    if (!selectedList) return;
+
+    try {
+      await Api.removeRecipeFromList(selectedList.id, recipeId);
+      notifications.show({
+        title: 'Success',
+        message: 'Recipe removed from collection',
+        color: 'green',
+      });
+      const updatedList = await Api.getRecipeList(selectedList.id);
+      setSelectedList(updatedList);
+      await refetch();
+    } catch (err) {
+      notifications.show({
+        title: 'Error',
+        message: err instanceof Error ? err.message : 'Failed to remove recipe',
+        color: 'red',
+      });
+    }
+  };
+
+  const handleOpenCreateForm = () => {
+    setEditingList(null);
+    setFormOpened(true);
+  };
+
+  const handleCloseForm = () => {
+    setFormOpened(false);
+    setEditingList(null);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailOpened(false);
+    setSelectedList(null);
+  };
 
   return (
     <Box p="xl">
       <Stack gap="lg">
         <Group justify="space-between" align="center">
           <Title order={1}>Recipe Collections</Title>
-          <Button leftSection={<IconPlus size={18} />}>Create Collection</Button>
+          <Button leftSection={<IconPlus size={18} />} onClick={handleOpenCreateForm}>
+            Create Collection
+          </Button>
         </Group>
 
         <Divider />
@@ -46,7 +226,9 @@ export function RecipeLists() {
             <Stack align="center" gap="md">
               <IconList size={48} stroke={1.5} opacity={0.5} />
               <Text c="dimmed">No collections found</Text>
-              <Button leftSection={<IconPlus size={18} />}>Create your first collection</Button>
+              <Button leftSection={<IconPlus size={18} />} onClick={handleOpenCreateForm}>
+                Create your first collection
+              </Button>
             </Stack>
           </Center>
         )}
@@ -58,8 +240,40 @@ export function RecipeLists() {
                 <Card shadow="sm" padding="lg" radius="md" withBorder style={{ height: '100%' }}>
                   <Stack gap="md">
                     <Group justify="space-between" align="flex-start">
-                      <Title order={3}>{list.name}</Title>
-                      <Badge size="lg">{list.recipe_count}</Badge>
+                      <Title order={3} style={{ flex: 1 }}>
+                        {list.name}
+                      </Title>
+                      <Group gap="xs">
+                        <Badge size="lg">{list.recipe_count}</Badge>
+                        <Menu shadow="md" width={200}>
+                          <Menu.Target>
+                            <ActionIcon variant="subtle" color="gray">
+                              <IconEdit size={18} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item
+                              leftSection={<IconEye size={14} />}
+                              onClick={() => handleViewDetails(list.id)}
+                            >
+                              View Details
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconEdit size={14} />}
+                              onClick={() => handleEdit(list)}
+                            >
+                              Edit
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconTrash size={14} />}
+                              color="red"
+                              onClick={() => handleDelete(list)}
+                            >
+                              Delete
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Group>
                     </Group>
 
                     {list.description && (
@@ -86,7 +300,12 @@ export function RecipeLists() {
                       </Stack>
                     )}
 
-                    <Button variant="light" fullWidth mt="auto">
+                    <Button
+                      variant="light"
+                      fullWidth
+                      mt="auto"
+                      onClick={() => handleViewDetails(list.id)}
+                    >
                       View Collection
                     </Button>
                   </Stack>
@@ -96,6 +315,31 @@ export function RecipeLists() {
           </Grid>
         )}
       </Stack>
+
+      <RecipeListForm
+        opened={formOpened}
+        onClose={handleCloseForm}
+        onSubmit={handleCreateOrUpdate}
+        initialData={editingList}
+        isLoading={isSubmitting}
+      />
+
+      <RecipeListDetail
+        opened={detailOpened}
+        onClose={handleCloseDetail}
+        recipeList={selectedList}
+        onAddRecipe={() => setSearchOpened(true)}
+        onRemoveRecipe={handleRemoveRecipeFromList}
+        onEdit={handleEditFromDetail}
+        onDelete={handleDeleteFromDetail}
+      />
+
+      <RecipeSearchModal
+        opened={searchOpened}
+        onClose={() => setSearchOpened(false)}
+        onSelectRecipe={handleAddRecipeToList}
+        excludeRecipeIds={selectedList?.recipes.map((r) => r.id) || []}
+      />
     </Box>
   );
 }

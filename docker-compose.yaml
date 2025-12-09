@@ -22,6 +22,7 @@ services:
       - "8000:8000"
     volumes:
       - ./recipes/:/app/recipes/
+      - media_data:/app/mediafiles
     command: python manage.py runserver 0.0.0.0:8000
     env_file:
       - .env
@@ -56,3 +57,4 @@ services:
 
 volumes:
   db_data:
+  media_data:

@@ -9,6 +9,7 @@ variables:
   API_IMAGE_NAME: $INTERNAL_REGISTRY_URL/library/recipes:$IMAGE_TAG
   UI_IMAGE_NAME: $INTERNAL_REGISTRY_URL/library/recipes-ui:$IMAGE_TAG
   ARGO_CD_APP_REPO: gitlab.alexfricker.com/devops/gitops-prod.git
+  ARGO_CD_DEMO_REPO: gitlab.alexfricker.com/devops/gitops-demo.git
   KUSTOMIZATION_SOURCE_DIR: recipes
   KUSTOMIZATION_BACKEND_IMAGE_NAME: recipes-backend
   KUSTOMIZATION_FRONTEND_IMAGE_NAME: recipes-frontend
@@ -46,6 +47,13 @@ include:
       job-name-suffix: openshift
       environment: production
       source-repo: $ARGO_CD_APP_REPO
+      source-dir: $KUSTOMIZATION_SOURCE_DIR
+      image-tags: "$KUSTOMIZATION_BACKEND_IMAGE_NAME=$IMAGE_TAG $KUSTOMIZATION_FRONTEND_IMAGE_NAME=$IMAGE_TAG"
+  - component: $CI_SERVER_FQDN/devops/gitlab-cicd/deploy-image@1.0.0
+    inputs:
+      job-name-suffix: demo
+      environment: production
+      source-repo: $ARGO_CD_DEMO_REPO
       source-dir: $KUSTOMIZATION_SOURCE_DIR
       image-tags: "$KUSTOMIZATION_BACKEND_IMAGE_NAME=$IMAGE_TAG $KUSTOMIZATION_FRONTEND_IMAGE_NAME=$IMAGE_TAG"
   - component: $CI_SERVER_FQDN/devops/gitlab-cicd/release-image@1.0.0

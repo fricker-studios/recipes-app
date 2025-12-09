@@ -24,13 +24,16 @@ import {
   Image,
   Loader,
   Menu,
+  Modal,
   Select,
   Stack,
   Text,
   TextInput,
   Title,
 } from '@mantine/core';
+import { Api } from '../api/Api';
 import type { DifficultyLevel, RecipeListItem } from '../api/types';
+import { CreateRecipeModal } from '../components/CreateRecipeModal';
 import { useRecipes } from '../hooks/useRecipes';
 
 const DIFFICULTY_COLORS: Record<DifficultyLevel, string> = {
@@ -44,8 +47,11 @@ export function Recipes() {
   const [search, setSearch] = useState('');
   const [difficulty, setDifficulty] = useState<DifficultyLevel | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState<RecipeListItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data, loading, error } = useRecipes({
+  const { data, loading, error, refetch } = useRecipes({
     search: search || undefined,
     difficulty: difficulty || undefined,
   });
@@ -56,6 +62,28 @@ export function Recipes() {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
     return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  };
+
+  const handleDeleteClick = (recipe: RecipeListItem) => {
+    setRecipeToDelete(recipe);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!recipeToDelete) return;
+
+    setIsDeleting(true);
+
+    try {
+      await Api.deleteRecipe(recipeToDelete.id);
+      setDeleteModalOpen(false);
+      setRecipeToDelete(null);
+      refetch();
+    } catch (err) {
+      console.error('Failed to delete recipe:', err);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -130,8 +158,8 @@ export function Recipes() {
                   onClick={() => navigate(`/recipes/${recipe.id}`)}
                 >
                   <Card.Section>
-                    {recipe.image_url ? (
-                      <Image src={recipe.image_url} height={160} alt={recipe.name} fit="cover" />
+                    {recipe.image ? (
+                      <Image src={recipe.image} height={160} alt={recipe.name} fit="cover" />
                     ) : (
                       <Center
                         h={160}
@@ -174,7 +202,7 @@ export function Recipes() {
                             color="red"
                             onClick={(e) => {
                               e.stopPropagation();
-                              // TODO: Delete recipe
+                              handleDeleteClick(recipe);
                             }}
                           >
                             Delete
@@ -215,6 +243,43 @@ export function Recipes() {
           </Grid>
         )}
       </Stack>
+
+      <CreateRecipeModal
+        opened={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={refetch}
+      />
+
+      <Modal
+        opened={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        title="Delete Recipe"
+        centered
+      >
+        <Stack gap="md">
+          <Text>
+            Are you sure you want to delete <strong>{recipeToDelete?.name}</strong>? This action
+            cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              leftSection={<IconTrash size={18} />}
+              onClick={handleDelete}
+              loading={isDeleting}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

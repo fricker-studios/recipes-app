@@ -48,28 +48,37 @@ class FdcSettingsView(APIView):
             {
                 "enabled_data_types": config.FDC_ENABLED_DATA_TYPES,
                 "available_data_types": [dt.value for dt in FoodDataTypes],
+                "api_key": config.FDC_API_KEY,
             }
         )
 
     def post(self, request):
         """Update FDC settings."""
-        enabled_data_types = request.data.get("enabled_data_types", [])
+        enabled_data_types = request.data.get("enabled_data_types")
+        api_key = request.data.get("api_key")
 
-        # Validate that all provided data types are valid
-        valid_data_types = [dt.value for dt in FoodDataTypes]
-        for data_type in enabled_data_types:
-            if data_type not in valid_data_types:
-                return Response(
-                    {"error": f"Invalid data type: {data_type}"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        # Validate and update enabled data types if provided
+        if enabled_data_types is not None:
+            # Validate that all provided data types are valid
+            valid_data_types = [dt.value for dt in FoodDataTypes]
+            for data_type in enabled_data_types:
+                if data_type not in valid_data_types:
+                    return Response(
+                        {"error": f"Invalid data type: {data_type}"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
-        # Update the config
-        config.FDC_ENABLED_DATA_TYPES = enabled_data_types
+            # Update the config
+            config.FDC_ENABLED_DATA_TYPES = enabled_data_types
+
+        # Update API key if provided
+        if api_key is not None:
+            config.FDC_API_KEY = api_key
 
         return Response(
             {
                 "enabled_data_types": config.FDC_ENABLED_DATA_TYPES,
+                "api_key": config.FDC_API_KEY,
                 "message": "Settings updated successfully",
             }
         )

@@ -3,6 +3,7 @@ export type FdcDataType = 'Branded' | 'Foundation' | 'Survey (FNDDS)' | 'SR Lega
 export interface FdcSettings {
   enabled_data_types: string[];
   available_data_types: string[];
+  api_key: string;
 }
 
 export interface FdcFoodItem {
@@ -54,7 +55,7 @@ export interface CreateIngredientRequest {
   name: string;
   plural_name?: string;
   description?: string;
-  fdc_food_item: number;
+  fdc_food_item?: number;
   grams_per_cup?: number | null;
   nutrients: {
     nutrient_name: string;
@@ -107,7 +108,7 @@ export interface RecipeListItem {
   cook_time_minutes?: number | null;
   total_time_minutes: number;
   servings: number;
-  image_url?: string;
+  image?: string | null;
   tags?: string;
   ingredient_count: number;
   created_at: string;
@@ -127,7 +128,7 @@ export interface CreateRecipeRequest {
   prep_time_minutes?: number | null;
   cook_time_minutes?: number | null;
   servings?: number;
-  image_url?: string;
+  image?: File | string | null;
   source_url?: string;
   tags?: string;
   ingredients?: Omit<RecipeIngredient, 'id' | 'ingredient_name' | 'ingredient_plural_name'>[];

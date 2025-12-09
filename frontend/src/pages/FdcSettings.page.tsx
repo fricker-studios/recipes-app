@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { IconAlertCircle, IconDeviceFloppy, IconRefresh } from '@tabler/icons-react';
+import { IconAlertCircle, IconDeviceFloppy, IconKey, IconRefresh } from '@tabler/icons-react';
 import {
   Alert,
   Box,
@@ -12,6 +12,7 @@ import {
   Loader,
   Stack,
   Text,
+  TextInput,
   Title,
 } from '@mantine/core';
 import { Api } from '../api/Api';
@@ -20,6 +21,7 @@ import { useFdcSettings } from '../hooks/useFdcSettings';
 export function FdcSettings() {
   const { data, loading, error, refetch } = useFdcSettings();
   const [selectedDataTypes, setSelectedDataTypes] = useState<string[]>([]);
+  const [apiKey, setApiKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -30,6 +32,7 @@ export function FdcSettings() {
   useEffect(() => {
     if (data) {
       setSelectedDataTypes(data.enabled_data_types);
+      setApiKey(data.api_key);
     }
   }, [data]);
 
@@ -46,7 +49,7 @@ export function FdcSettings() {
     setSaveSuccess(false);
 
     try {
-      await Api.updateFdcSettings(selectedDataTypes);
+      await Api.updateFdcSettings(selectedDataTypes, apiKey);
       setSaveSuccess(true);
       await refetch();
     } catch (err) {
@@ -95,7 +98,7 @@ export function FdcSettings() {
 
   const hasChanges =
     JSON.stringify([...selectedDataTypes].sort()) !==
-    JSON.stringify([...data.enabled_data_types].sort());
+      JSON.stringify([...data.enabled_data_types].sort()) || apiKey !== data.api_key;
 
   return (
     <Box p="xl">
@@ -132,6 +135,32 @@ export function FdcSettings() {
             {taskError}
           </Alert>
         )}
+
+        <Card shadow="sm" padding="lg" radius="md" withBorder>
+          <Stack gap="md">
+            <div>
+              <Group gap="xs">
+                <IconKey size={20} />
+                <Title order={3}>FoodData Central API Key</Title>
+              </Group>
+              <Text size="sm" c="dimmed" mt="xs">
+                Configure your FoodData Central API key. Use 'DEMO_KEY' for testing (limited rate).
+              </Text>
+            </div>
+
+            <TextInput
+              label="API Key"
+              placeholder="Enter your FDC API key"
+              value={apiKey}
+              onChange={(e) => {
+                setApiKey(e.currentTarget.value);
+                setSaveSuccess(false);
+              }}
+              disabled={isSaving}
+              description="Get your API key from https://fdc.nal.usda.gov/api-key-signup.html"
+            />
+          </Stack>
+        </Card>
 
         <Card shadow="sm" padding="lg" radius="md" withBorder>
           <Stack gap="md">
