@@ -20,6 +20,7 @@ import {
   Group,
   Loader,
   Menu,
+  Modal,
   Stack,
   Text,
   Title,
@@ -37,9 +38,12 @@ export function RecipeLists() {
   const [formOpened, setFormOpened] = useState(false);
   const [detailOpened, setDetailOpened] = useState(false);
   const [searchOpened, setSearchOpened] = useState(false);
+  const [deleteModalOpened, setDeleteModalOpened] = useState(false);
+  const [listToDelete, setListToDelete] = useState<RecipeCollection | null>(null);
   const [editingList, setEditingList] = useState<RecipeCollection | null>(null);
   const [selectedList, setSelectedList] = useState<RecipeCollection | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleCreateOrUpdate = async (formData: CreateRecipeCollectionRequest) => {
     setIsSubmitting(true);
@@ -74,32 +78,36 @@ export function RecipeLists() {
   };
 
   const handleDelete = async (list: RecipeCollection) => {
-    if (
-      !window.confirm(
-        `Are you sure you want to delete "${list.name}"? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
+    setListToDelete(list);
+    setDeleteModalOpened(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!listToDelete) return;
+
+    setIsDeleting(true);
     try {
-      await Api.deleteRecipeList(list.id);
+      await Api.deleteRecipeList(listToDelete.id);
       notifications.show({
         title: 'Success',
         message: 'Collection deleted successfully',
         color: 'green',
       });
       await refetch();
-      if (selectedList?.id === list.id) {
+      if (selectedList?.id === listToDelete.id) {
         setDetailOpened(false);
         setSelectedList(null);
       }
+      setDeleteModalOpened(false);
+      setListToDelete(null);
     } catch (err) {
       notifications.show({
         title: 'Error',
         message: err instanceof Error ? err.message : 'Failed to delete collection',
         color: 'red',
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -340,6 +348,43 @@ export function RecipeLists() {
         onSelectRecipe={handleAddRecipeToList}
         excludeRecipeIds={selectedList?.recipes.map((r) => r.id) || []}
       />
+
+      <Modal
+        opened={deleteModalOpened}
+        onClose={() => {
+          setDeleteModalOpened(false);
+          setListToDelete(null);
+        }}
+        title="Delete Collection"
+        centered
+      >
+        <Stack gap="md">
+          <Text>
+            Are you sure you want to delete <strong>{listToDelete?.name}</strong>? This action
+            cannot be undone.
+          </Text>
+          <Group justify="flex-end">
+            <Button
+              variant="default"
+              onClick={() => {
+                setDeleteModalOpened(false);
+                setListToDelete(null);
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              color="red"
+              leftSection={<IconTrash size={18} />}
+              onClick={confirmDelete}
+              loading={isDeleting}
+            >
+              Delete
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Box>
   );
 }

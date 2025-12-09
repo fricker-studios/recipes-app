@@ -198,6 +198,21 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
         if ingredients_data is not None:
             instance.ingredients.all().delete()
             for ingredient_data in ingredients_data:
+                # Handle ingredient - get the Ingredient instance (same as create)
+                ingredient_value = ingredient_data.pop("ingredient")
+                if isinstance(ingredient_value, str):
+                    # Get or create ingredient by name
+                    ingredient, _ = Ingredient.objects.get_or_create(
+                        name=ingredient_value.strip()
+                    )
+                elif isinstance(ingredient_value, int):
+                    # It's an ID, fetch the instance
+                    ingredient = Ingredient.objects.get(id=ingredient_value)
+                else:
+                    # It's already an Ingredient instance
+                    ingredient = ingredient_value
+
+                ingredient_data["ingredient"] = ingredient
                 RecipeIngredient.objects.create(recipe=instance, **ingredient_data)
 
         # Update steps if provided
