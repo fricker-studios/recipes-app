@@ -8,7 +8,9 @@ from recipes.library.models import (
     RecipeList,
     RecipeStep,
 )
+from recipes.logging import getLogger
 
+logger = getLogger(__name__)
 
 class ProxiedFileField(serializers.FileField):
     """FileField that properly handles X-Forwarded-Host header for proxied requests"""
@@ -20,12 +22,14 @@ class ProxiedFileField(serializers.FileField):
         request = self.context.get('request')
         if request is not None:
             # Get the forwarded host, falling back to the request host
+            logger.info("Handling proxied file URL with X-Forwarded-Host")
+            logger.info(f"Request META: {request.META}")
             forwarded_host = request.META.get('HTTP_X_FORWARDED_HOST')
-            forwarded_proto = request.META.get('HTTP_X_FORWARDED_PROTO', 'https')
             
             if forwarded_host:
                 # Manually construct the URL with the forwarded host
-                return f"{forwarded_proto}://{forwarded_host}{value.url}"
+                # Always use https since we're behind an SSL-terminating proxy
+                return f"https://{forwarded_host}{value.url}"
             else:
                 # Fall back to default behavior
                 return request.build_absolute_uri(value.url)
