@@ -121,7 +121,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
     total_time_minutes = serializers.IntegerField(read_only=True)
     ingredient_count = serializers.SerializerMethodField()
-    image = ProxiedFileField(read_only=True)
+    image = ProxiedFileField(required=False, allow_null=True)
 
     class Meta:
         model = Recipe
@@ -152,7 +152,7 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
     ingredients = RecipeIngredientSerializer(many=True, required=False, read_only=True)
     steps = RecipeStepSerializer(many=True, required=False, read_only=True)
     total_time_minutes = serializers.IntegerField(read_only=True)
-    image = ProxiedFileField(read_only=True)
+    image = ProxiedFileField(required=False, allow_null=True)
 
     class Meta:
         model = Recipe
