@@ -8,6 +8,7 @@ variables:
   IMAGE_TAG: v.$CI_COMMIT_TAG
   API_IMAGE_NAME: $INTERNAL_REGISTRY_URL/library/recipes:$IMAGE_TAG
   UI_IMAGE_NAME: $INTERNAL_REGISTRY_URL/library/recipes-ui:$IMAGE_TAG
+  UI_DEMO_IMAGE_NAME: $INTERNAL_REGISTRY_URL/library/recipes-ui-demo:$IMAGE_TAG
   ARGO_CD_APP_REPO: gitlab.alexfricker.com/devops/gitops-prod.git
   ARGO_CD_DEMO_REPO: gitlab.alexfricker.com/devops/gitops-demo.git
   KUSTOMIZATION_SOURCE_DIR: recipes
@@ -32,6 +33,30 @@ build-ui-files:
       - frontend/node_modules
       - .venv
   artifacts:
+    name: ui-prod
+    paths:
+      - frontend/dist
+      - staticfiles
+
+build-ui-files-demo:
+  stage: prebuild
+  image: registry.apps.oc01.alexfricker.com/library/gitlab-runner:v.1.0.0
+  script: |
+    make env
+    echo "VITE_BASE_PATH=/demos/recipes/" >> frontend/.env
+    echo "VITE_SENTRY_ENVIRONMENT=demo" >> frontend/.env
+    echo "VITE_SENTRY_RELEASE=\"$IMAGE_TAG\"" >> frontend/.env
+    echo "VITE_SENTRY_DSN=\"$SENTRY_DSN_UI\"" >> frontend/.env
+    export SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN_UI
+    npm --prefix=frontend run build
+    ./.venv/bin/python3 manage.py collectstatic --noinput
+  cache:
+    key: env-cache
+    paths:
+      - frontend/node_modules
+      - .venv
+  artifacts:
+    name: ui-demo
     paths:
       - frontend/dist
       - staticfiles
@@ -40,7 +65,12 @@ include:
   - component: $CI_SERVER_FQDN/devops/gitlab-cicd/build-image@1.0.0
     inputs:
       image-name: $UI_IMAGE_NAME
-      job-name-suffix: ui
+      job-name-suffix: ui-prod
+      dockerfile: Dockerfile.nginx
+  - component: $CI_SERVER_FQDN/devops/gitlab-cicd/build-image@1.0.0
+    inputs:
+      image-name: $UI_DEMO_IMAGE_NAME
+      job-name-suffix: ui-demo
       dockerfile: Dockerfile.nginx
   - component: $CI_SERVER_FQDN/devops/gitlab-cicd/deploy-image@1.0.0
     inputs:
@@ -59,6 +89,15 @@ include:
   - component: $CI_SERVER_FQDN/devops/gitlab-cicd/release-image@1.0.0
     inputs:
       app-name: $ARGOCD_APP_NAME
+
+# Override the generated build jobs to add dependencies
+build-image-ui-prod:
+  dependencies:
+    - build-ui-files
+
+build-image-ui-demo:
+  dependencies:
+    - build-ui-files-demo
 
 build-image-api:
   stage: build
