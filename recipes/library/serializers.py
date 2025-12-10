@@ -12,24 +12,26 @@ from recipes.logging import getLogger
 
 logger = getLogger(__name__)
 
+
 class ProxiedFileField(serializers.FileField):
-    """FileField that properly handles X-Forwarded-Host header for proxied requests"""
-    
+    """FileField that properly handles X-Original-Host header for proxied requests"""
+
     def to_representation(self, value):
         if not value:
             return None
-        
-        request = self.context.get('request')
+
+        request = self.context.get("request")
         if request is not None:
-            # Get the forwarded host, falling back to the request host
-            logger.info("Handling proxied file URL with X-Forwarded-Host")
-            logger.info(f"Request META: {request.META}")
-            forwarded_host = request.META.get('HTTP_X_FORWARDED_HOST')
-            
-            if forwarded_host:
+            # Try custom header first (not overwritten by OpenShift)
+            # then fall back to X-Forwarded-Host
+            original_host = request.META.get("HTTP_X_ORIGINAL_HOST")
+            forwarded_host = request.META.get("HTTP_X_FORWARDED_HOST")
+            host_to_use = original_host or forwarded_host
+
+            if host_to_use:
                 # Manually construct the URL with the forwarded host
                 # Always use https since we're behind an SSL-terminating proxy
-                return f"https://{forwarded_host}{value.url}"
+                return f"https://{host_to_use}{value.url}"
             else:
                 # Fall back to default behavior
                 return request.build_absolute_uri(value.url)
