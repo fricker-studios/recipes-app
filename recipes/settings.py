@@ -19,6 +19,7 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",")
 CSRF_TRUSTED_ORIGINS = os.getenv(
     "DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:5173"
 ).split(",")
+USE_X_FORWARDED_HOST = True
 
 
 # Application definition
