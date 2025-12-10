@@ -10,6 +10,28 @@ from recipes.library.models import (
 )
 
 
+class ProxiedFileField(serializers.FileField):
+    """FileField that properly handles X-Forwarded-Host header for proxied requests"""
+    
+    def to_representation(self, value):
+        if not value:
+            return None
+        
+        request = self.context.get('request')
+        if request is not None:
+            # Get the forwarded host, falling back to the request host
+            forwarded_host = request.META.get('HTTP_X_FORWARDED_HOST')
+            forwarded_proto = request.META.get('HTTP_X_FORWARDED_PROTO', 'https')
+            
+            if forwarded_host:
+                # Manually construct the URL with the forwarded host
+                return f"{forwarded_proto}://{forwarded_host}{value.url}"
+            else:
+                # Fall back to default behavior
+                return request.build_absolute_uri(value.url)
+        return value.url
+
+
 class IngredientNutrientSerializer(serializers.ModelSerializer):
     class Meta:
         model = IngredientNutrient
@@ -93,6 +115,7 @@ class RecipeListSerializer(serializers.ModelSerializer):
 
     total_time_minutes = serializers.IntegerField(read_only=True)
     ingredient_count = serializers.SerializerMethodField()
+    image = ProxiedFileField(read_only=True)
 
     class Meta:
         model = Recipe
@@ -123,6 +146,7 @@ class RecipeDetailSerializer(serializers.ModelSerializer):
     ingredients = RecipeIngredientSerializer(many=True, required=False, read_only=True)
     steps = RecipeStepSerializer(many=True, required=False, read_only=True)
     total_time_minutes = serializers.IntegerField(read_only=True)
+    image = ProxiedFileField(read_only=True)
 
     class Meta:
         model = Recipe
