@@ -14,7 +14,7 @@ export default ({ mode }) => {
       tsconfigPaths(),
       sentryVitePlugin({
         org: 'sentry',
-        project: 'recipes-ui',
+        project: 'recipes',
         url: 'https://sentry.alexfricker.com',
         release: process.env.VITE_SENTRY_RELEASE ? { name: process.env.VITE_SENTRY_RELEASE } : undefined,
       }),
