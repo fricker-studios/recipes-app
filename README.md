@@ -1,7 +1,7 @@
 # Recipes App
 
-[![latest release](https://gitlab.alexfricker.com/external/recipes-app/-/badges/release.svg)](https://gitlab.alexfricker.com/external/recipes-app/-/releases)
-[![pipeline status](https://gitlab.alexfricker.com/external/recipes-app/badges/main/pipeline.svg)](https://gitlab.alexfricker.com/external/recipes-app/-/pipelines)
+[![latest release](https://img.shields.io/github/v/release/africker/recipes)](https://github.com/africker/recipes/releases)
+[![Release to Production](https://github.com/africker/recipes/actions/workflows/release.yml/badge.svg)](https://github.com/africker/recipes/actions/workflows/release.yml)
 
 A full-stack recipe management application built with Django and React, featuring a modern UI powered by Mantine and comprehensive recipe library management.
 
