@@ -59,7 +59,7 @@ class RecipeLogger:
 
 
 def _filepath_to_dotpath(filepath):  # pragma: nocover
-    project_root = "order_payment_lifecycle/"
+    project_root = RELEVANT_ROOT_DIR
     anchor = filepath.rindex(project_root)
     path = pathlib.Path(filepath[anchor:])
     parts = path.with_suffix("").parts
