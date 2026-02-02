@@ -5,15 +5,6 @@ on:
     branches:
       - main
 
-env:
-  IMAGE_TAG: pr-${{ github.event.pull_request.number }}-${{ github.run_number }}
-  INTERNAL_REGISTRY_URL: ${{ secrets.INTERNAL_REGISTRY_URL }}
-  API_IMAGE_NAME: ${{ secrets.INTERNAL_REGISTRY_URL }}/recipes
-  UI_IMAGE_NAME: ${{ secrets.INTERNAL_REGISTRY_URL }}/recipes-ui
-  GITOPS_REPO: fricker-studios/gitops-dev
-  GITOPS_SOURCE_DIR: recipes
-  # ARGOCD_APP_NAME: recipes-dev
-
 jobs:
   build-ui-files:
     runs-on: self-hosted
@@ -25,15 +16,13 @@ jobs:
 
       - name: Set Up Environment
         run: make env
-        
+
       - name: Build UI files
         env:
-          SENTRY_DSN_UI: ${{ secrets.SENTRY_DSN_UI }}
+          VITE_SENTRY_ENVIRONMENT: dev
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
-          echo "VITE_SENTRY_ENVIRONMENT=dev" >> frontend/.env
-          echo "VITE_SENTRY_RELEASE=dev" >> frontend/.env
-          echo "VITE_SENTRY_DSN=\"$SENTRY_DSN_UI\"" >> frontend/.env
-          npm --prefix=frontend run build
+          node frontend/.yarn/releases/yarn-4.9.2.cjs --cwd frontend run build
           ./.venv/bin/python3 manage.py collectstatic --noinput
 
       - name: Cache node modules
@@ -56,73 +45,54 @@ jobs:
             frontend/dist
             staticfiles
 
-  build-image-api:
-    runs-on: self-hosted
-    name: Build API Image
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  build-multiarch-api:
+    name: Build and Push Multi-Arch Image (API)
+    uses: fricker-studios/github-actions/.github/workflows/build-multiarch-image.yml@main
+    with:
+      image_name: ${{ vars.INTERNAL_REGISTRY_URL }}/internal/recipes
+      registry: ${{ vars.INTERNAL_REGISTRY_URL }}
+      push: true
+      tags: |
+        pr-${{ github.event.pull_request.number }}-${{ github.run_number }}
+    secrets:
+      registry_username: ${{ secrets.REGISTRY_USERNAME }}
+      registry_password: ${{ secrets.REGISTRY_PASSWORD }}
+      sentry_dsn: ${{ secrets.SENTRY_DSN }}
 
-      - name: Build and push image
-        env:
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
-          API_IMAGE_NAME: ${{ env.API_IMAGE_NAME }}
-        run: |
-          docker build -t $API_IMAGE_NAME:$IMAGE_TAG -f Dockerfile .
-          docker push $API_IMAGE_NAME:$IMAGE_TAG
-
-  build-image-ui:
-    runs-on: self-hosted
-    name: Build UI Image
+  build-multiarch-ui:
+    name: Build and Push Multi-Arch Image (UI)
     needs: build-ui-files
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download UI artifacts 
-      uses: actions/download-artifact@v4
-      with:
-        name: ui-files
-
-    - name: Build and push image
-      env:
-        IMAGE_TAG: ${{ env.IMAGE_TAG }}
-        UI_IMAGE_NAME: ${{ env.UI_IMAGE_NAME }}
-      run: |
-        docker build -t $UI_IMAGE_NAME:$IMAGE_TAG -f Dockerfile.nginx .
-        docker push $UI_IMAGE_NAME:$IMAGE_TAG
+    uses: fricker-studios/github-actions/.github/workflows/build-multiarch-image.yml@main
+    with:
+      image_name: ${{ vars.INTERNAL_REGISTRY_URL }}/internal/recipes-ui
+      registry: ${{ vars.INTERNAL_REGISTRY_URL }}
+      dockerfile_path: ./Dockerfile.nginx
+      push: true
+      tags: |
+        pr-${{ github.event.pull_request.number }}-${{ github.run_number }}
+      download_artifacts: true
+      artifact_name: ui-files
+      artifact_path: "."
+    secrets:
+      registry_username: ${{ secrets.REGISTRY_USERNAME }}
+      registry_password: ${{ secrets.REGISTRY_PASSWORD }}
 
   update-gitops-manifest:
-    runs-on: self-hosted
-    name: Update GitOps Manifest
-    needs: [build-image-api, build-image-ui]
+    name: Update GitOps Manifest (Development)
+    needs: [build-multiarch-api, build-multiarch-ui]
+    uses: fricker-studios/github-actions/.github/workflows/update-gitops-manifest.yml@main
+    with:
+      image_tag: pr-${{ github.event.pull_request.number }}-${{ github.run_number }}
+      gitops_repo: fricker-studios/gitops-dev
+      project_source_dir: recipes
+    secrets:
+      GITOPS_ACCESS_TOKEN: ${{ secrets.GITOPS_PAT }}
 
-    steps:
-    - name: Checkout gitops repo
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ env.GITOPS_REPO }}
-        token: ${{ secrets.GITOPS_PAT }}
-        path: gitops
-
-    - name: Update kustomization.yaml
-      env:
-        IMAGE_TAG: ${{ env.IMAGE_TAG }}
-      run: |
-        cd gitops/${{ env.GITOPS_SOURCE_DIR }}
-        # Update image tags
-        sed -i "s|newTag: .*|newTag: $IMAGE_TAG|g" kustomization.yaml
-        cat kustomization.yaml
-
-    - name: Commit and push changes
-      env:
-        IMAGE_TAG: ${{ env.IMAGE_TAG }}
-      run: |
-        cd gitops
-        git config user.name "GitHub Actions"
-        git config user.email "actions@github.com"
-        git add ${{ env.GITOPS_SOURCE_DIR }}/kustomization.yaml
-        git commit -m "Update ${{ env.GITOPS_SOURCE_DIR }} images to $IMAGE_TAG" || echo "No changes to commit"
-        git push
+  argocd-sync:
+    name: ArgoCD Sync Application (Development)
+    needs: update-gitops-manifest
+    uses: fricker-studios/github-actions/.github/workflows/argocd-sync.yml@main
+    with:
+      application: recipes-dev
+    secrets:
+      ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
