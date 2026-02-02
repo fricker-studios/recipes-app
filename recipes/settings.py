@@ -21,6 +21,13 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
 ).split(",")
 USE_X_FORWARDED_HOST = True
 
+# Log startup configuration
+import logging
+startup_logger = logging.getLogger(__name__)
+startup_logger.info(f"Django starting with DEBUG={DEBUG}")
+startup_logger.info(f"Allowed hosts: {ALLOWED_HOSTS}")
+startup_logger.info(f"CSRF trusted origins: {CSRF_TRUSTED_ORIGINS}")
+
 
 # Application definition
 
@@ -88,6 +95,8 @@ DATABASES = {
     }
 }
 
+startup_logger.info(f"Database configured: {DATABASES['default']['ENGINE']} at {DATABASES['default']['HOST']}:{DATABASES['default']['PORT']}")
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -136,21 +145,30 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Sentry Config
 SENTRY_DSN = os.getenv("DJANGO_SENTRY_DSN")
 if SENTRY_DSN:
+    sentry_environment = os.getenv("DJANGO_SENTRY_ENV", "dev")
+    sentry_release = os.getenv("DJANGO_SENTRY_RELEASE_VERSION", "dev")
+    startup_logger.info(f"Initializing Sentry with environment: {sentry_environment}, release: {sentry_release}")
     sentry_sdk.init(
         dsn=SENTRY_DSN,
         traces_sample_rate=0.1,
-        environment=os.getenv("DJANGO_SENTRY_ENV", "dev"),
-        release=os.getenv("DJANGO_SENTRY_RELEASE_VERSION", "dev"),
+        environment=sentry_environment,
+        release=sentry_release,
         integrations=[DjangoIntegration(), CeleryIntegration()],
         attach_stacktrace=True,
         send_default_pii=True,
     )
+    startup_logger.info("Sentry initialized successfully")
+else:
+    startup_logger.info("Sentry DSN not configured, skipping Sentry initialization")
 
 
 # Celery Configuration
 CELERY_RESULT_BACKEND = "django-db"
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+startup_logger.info(f"Celery broker configured: {CELERY_BROKER_URL}")
+startup_logger.info(f"Celery result backend: {CELERY_RESULT_BACKEND}")
 
 CELERY_BEAT_SCHEDULE = {
     "fetch_food_items": {
